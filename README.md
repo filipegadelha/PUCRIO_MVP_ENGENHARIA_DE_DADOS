@@ -8,12 +8,17 @@ O pipeline do projeto foi desenvolvido no Databricks e estruturado segundo a arq
 
 Segue o link para os principais documentos do repositório:
 
-Repositório: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS
-Notebook Bronze: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Bronze_Ingestao.ipynb
-Notebook Silver: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Silver_Tratamento.ipynb
-Notebook Gold: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Gold_FatoDimens%C3%B5es.ipynb
-Notebook Análises: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_An%C3%A1lises.ipynb
-ReadME: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/README.md
+**Repositório: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS**
+
+**Notebook Bronze: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Bronze_Ingestao.ipynb**
+
+**Notebook Silver: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Silver_Tratamento.ipynb**
+
+**Notebook Gold: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Gold_FatoDimens%C3%B5es.ipynb**
+
+**Notebook Análises: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_An%C3%A1lises.ipynb**
+
+**ReadME: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/README.md**
 
 ---
 
@@ -213,9 +218,6 @@ Por outro lado, para evitar a persistência parcial dos dados de um período, si
 
 Caso a extração não seja integralmente concluída, os registros parciais permanecem apenas em memória e não são gravados na camada Bronze. Essa estratégia evita que uma carga incompleta seja posteriormente interpretada como um período integralmente processado. Nos casos de execução bem-sucedida, os registros são persistidos na tabela `Bronze_Processos` utilizando modo incremental de gravação (`append`).
 
-> **Inserir screenshot da tabela `ControleIngestao`.**
-
-> **Inserir screenshot da tabela `Bronze_Processos` persistida no Databricks.**
 
 ---
 
@@ -387,7 +389,7 @@ Cada notebook possui uma responsabilidade específica:
 
 O uso de tabelas persistidas no Databricks permite que cada notebook utilize como entrada o resultado materializado da etapa anterior, sem dependência de variáveis mantidas exclusivamente em memória.
 
-> **Evidências - Notebooks no Databricks
+### Evidências - Notebooks no Databricks
 
 <img width="1072" height="582" alt="image" src="https://github.com/user-attachments/assets/5c56e5e8-1af0-419c-9c94-847239f3533d" />
 
