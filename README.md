@@ -6,6 +6,14 @@ Este projeto foi desenvolvido como MVP da Sprint de Engenharia de Dados da PUC-R
 
 O pipeline do projeto foi desenvolvido no Databricks e estruturado segundo a arquitetura Medalhão, com camadas Bronze, Silver e Gold. Os notebooks foram separados conforme as atividades desenvolvidas em cada etapa do pipeline.
 
+Segue o link para os principais documentos do repositório:
+
+Repositório: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS
+Notebook Bronze: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Bronze_Ingestao.ipynb
+Notebook Silver: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Silver_Tratamento.ipynb
+Notebook Gold: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_Gold_FatoDimens%C3%B5es.ipynb
+Notebook Análises: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/MVP_An%C3%A1lises.ipynb
+ReadME: https://github.com/filipegadelha/PUCRIO_MVP_ENGENHARIA_DE_DADOS/blob/main/README.md
 
 ---
 
@@ -416,6 +424,16 @@ COUNT(DISTINCT numero_processo)
 
 para identificar eventual ocorrência de duplicidades.
 
+Importante notar que, na camada Bronze, identificaram-se duplicidades decorrentes da configuração da paginação da API. Após análise dos registros, identificou-se que, em todos, havia identidade entre todos os campos envolvidos, com exceção dos metadados de controle da própria ingestão. O tratamento das duplicidades ocorreu na persistência para a camada Silver:
+
+### Evidências tratamento de duplicidade
+
+<img width="730" height="465" alt="image" src="https://github.com/user-attachments/assets/73a525bc-eac8-403c-8a7e-1e14a26338b9" />
+
+
+<img width="700" height="487" alt="image" src="https://github.com/user-attachments/assets/68ad67cf-436f-4a2e-ac05-85dd2795106a" />
+
+
 ## 5.2 Valores nulos
 
 Foram realizadas validações nas principais colunas utilizadas no modelo, especialmente:
@@ -428,6 +446,14 @@ orgaoJulgador_nome
 ```
 
 As verificações foram realizadas antes da persistência da camada Silver.
+
+### Evidências - Contagem de numero_processo e data_ajuizamento nulo na Bronze
+
+<img width="547" height="462" alt="image" src="https://github.com/user-attachments/assets/577f055c-def8-49ac-8596-c8f9166a19cf" />
+
+<img width="542" height="477" alt="image" src="https://github.com/user-attachments/assets/6f276ad5-5522-480c-80c8-88ee7991d3e5" />
+
+
 
 ## 5.3 Inconsistência no formato das datas
 
@@ -444,6 +470,11 @@ e:
 ```text
 2024-01-02T08:35:16.000Z
 ```
+### Evidências - Formato das datas
+
+
+<img width="1360" height="516" alt="MVP_Evidencia_AlteracaoFormatoData" src="https://github.com/user-attachments/assets/6a8f4a67-cc49-4aec-a3b0-64d27f38662d" />
+
 
 Para evitar perda de registros durante a conversão, foi utilizado tratamento tolerante aos diferentes formatos.
 
@@ -477,39 +508,89 @@ As análises foram realizadas no notebook:
 
 [`MVP_Análises.ipynb`](./MVP_Análises.ipynb)
 
+Retomando a proposta inicial, temos as seguintes perguntas a serem respondidas por meio da exploração dos dados:
+
+> Após a edição da Resolução CNJ n.º 547, houve redução das execuções fiscais na Justiça Estadual de São Paulo?
+
+> Qual o perfil de distribuição das execuções fiscais entre os órgãos do Tribunal de Justiça do Estado de São Paulo?
+
+> Eventual redução decorrente da aplicação da Resolução CNJ n.º 547 ocorreu de maneira uniforme entre os diversos órgãos?
+
 ## 6.1 Evolução temporal dos ajuizamentos
 
-A análise mensal revelou elevada oscilação no número de ajuizamentos, com picos relevantes em determinados meses.
+> Após a edição da Resolução CNJ n.º 547, houve redução das execuções fiscais na Justiça Estadual de São Paulo?
 
-Em 2023 foram observados volumes mais elevados e maior volatilidade.
+A primeira pergunta envolve a compreensão do quantitativo de execuções fiscais ao longo do período e se após a edição da Resolução CNJ n.º 547/2024, publicada em 22 de fevereiro de 2024, houve alteração desse volume.
 
-A partir de 2024 ocorreu redução relevante no volume mensal de ajuizamentos, embora permanecessem picos pontuais em determinados períodos.
+Para esse objetivo, será realizada consulta na camada Gold da quantidade de processos, agrupando-se o resultado pelo ano e pela combinação de ano e mês do ajuizamento. Seguem os gráficos gerados, no Databricks, a partir destas consultas:
 
-O comportamento observado sugere a existência de fatores sazonais, administrativos ou operacionais capazes de concentrar os ajuizamentos em determinados meses.
+<img width="1377" height="511" alt="image" src="https://github.com/user-attachments/assets/e687e70a-874f-4e76-bd0a-9ff12a522d09" />
 
-> **Inserir gráfico da evolução mensal dos ajuizamentos.**
+<img width="1317" height="546" alt="image" src="https://github.com/user-attachments/assets/36c1197d-e9e7-4a23-a076-9b89f85d0953" />
+
+
+
+O resultado da consulta demonstra que houve uma diminuição bastante significativa da quantidade de ajuizamentos na proximidade da publicação da Resolução CNJ n.º 547/2024 (22/02/2024). Esse comportamento é explicado pelo fato de que o Tema n.º 1184 do STF, que trazia as conclusões que estão na regulamentação, já havia sido julgado (julgamento em 19/12/2023), de forma que os entes públicos já tinham iniciado a adotar medidas para se adequar ao entendimento jurisprudencial acerca do ajuizamento.
+
+Após a publicação, houve uma queda significativa do número de ajuizamentos, os quais permanecem atualmente em volume médio significativamente inferior àquele observado em 2023.
+
+Interessante notar a existência de picos nos meses de dezembro ao longo dos anos, mesmo em 2023. Essa sazonalidade pode estar relacionada a algum tipo de fatores periódicos ou mesmo circunstâncias operacionais ou administrativas que repercutem na concentração dos ajuizamentos em determinados meses.
+
 
 ## 6.2 Distribuição por órgão julgador
 
-Também foram calculados os volumes de ajuizamento por órgão julgador, permitindo identificar as unidades que concentraram maior quantidade de execuções fiscais no período analisado.
+> Qual o perfil de distribuição das execuções fiscais entre os órgãos do Tribunal de Justiça do Estado de São Paulo?
 
-Para determinadas análises foram selecionadas as unidades com maior volume total de ajuizamentos, evitando que órgãos com número reduzido de processos produzissem variações percentuais pouco representativas.
+O segundo questionamento destina-se a compreender qual o perfil de distribuição das execuções fiscais entre os diversos órgãos judiciários do Tribunal de Justiça do Estado de São Paulo.
 
-> **Inserir gráfico dos principais órgãos julgadores.**
+Para essa segunda análise, será realizada consulta na camada Gold da quantidade de processos, agrupando-se o resultado pelo órgão julgador. Tendo em vista a quantidade de órgãos julgadores (aproximadamente 400), optou-se pela realização de um recorte para análise dos 20 primeiros órgãos:
 
-## 6.3 Comportamento após a Resolução CNJ nº 547/2024
+> <img width="1337" height="567" alt="image" src="https://github.com/user-attachments/assets/a45d20ed-954b-400f-a8ae-4637c19fe84d" />
 
-Foi analisada a evolução mensal dos principais órgãos julgadores antes e após o início de 2024.
 
-Os dados indicam redução expressiva dos ajuizamentos em diversas unidades após esse período.
+Extraindo-se os 20 primeiros registros, observa-se que o volume de distribuições é significativo superior à média na Vara de Execuções Fiscais Municipais da Capital (217.786 execuções). A Vara de Execuções Fiscais Estaduais da Capital ocupa a 4ª posição, com um quantitativo significativamente inferior de execuções ajuizadas (59.243).
 
-Entretanto, a intensidade e a persistência dessa redução não ocorreram de forma uniforme entre todos os órgãos julgadores.
+Um outro achado relevante na análise é que o quantitativo de distribuição não segue a proporcionalidade que se poderia esperar do tamanho dos municípios em que sediadas as unidades judiciárias. Com efeito, o Setor de Execuções Fiscais de Campinas, que é o 3º maior município de São Paulo segundo o IBGE, ocupa a 11ª posição, havendo varas em municípios de menor porte com maior volume de ajuizamentos.
 
-Algumas unidades apresentaram redução acentuada e manutenção de um patamar inferior, enquanto outras registraram recuperação posterior do volume de ajuizamentos.
 
-Dessa forma, os resultados permitem identificar uma **associação temporal** entre o período posterior à Resolução CNJ nº 547/2024 e a redução dos ajuizamentos, mas não permitem atribuir causalmente essa redução exclusivamente à norma.
+## 6.3 Comportamento do volume de ajuizamento entre os órgãos após a Resolução CNJ nº 547/2024
 
-> **Inserir gráfico da evolução das maiores unidades.**
+> Eventual alteração decorrente da aplicação da Resolução CNJ n.º 547 ocorreu de maneira uniforme entre os diversos órgãos?
+
+O terceiro questionamento destina-se a compreender como os efeitos da Resolução CNJ n.º 547/2024 repercutiram nos diversos órgãos judiciários do Tribunal de Justiça paulista.
+
+Considerando o número de órgãos identificados, optou-se por realizar um recorte de um universo que possua maior representatividade estatística dentro do panorama analisado. Dessa maneira, a análise temporal tomou como base o grupo identificado na pergunta anterior, qual seja, os 20 órgãos judiciários com maior distribuição.
+
+Para direcionar a consulta a este objetivo, foi utilizada uma CTE inicial na query, aproveitando o código utilizado na pergunta anterior, para possibilitar que o relacionamento com a tabela-fato Ajuizamento e a tabela-dimensão Tempo se limitassem ao grupo de órgãos que será analisado. Os gráficos do resultado por ano e por ano-mês seguem abaixo apresentados:
+
+<img width="1342" height="567" alt="image" src="https://github.com/user-attachments/assets/8b02169b-9cb0-4cb1-987a-bf3e34db0ee6" />
+
+<img width="1322" height="581" alt="image" src="https://github.com/user-attachments/assets/355bc850-270e-4679-854c-a188808e3ff7" />
+
+
+O resultado da consulta traz uma demonstração que, no período imediatamente posterior à edição da Resolução CNJ n.º 547/2024, houve uma queda significiativa no número de ajuizamentos. Essa tendência foi seguida por uma posterior elevação, na maioria dos órgãos observados, seguido por uma estabilização do crescimento em momento posterior. Embora haja movimentos sazonais de alta dentro da série temporal, infere-se que, no geral, os patamares totais mantiveram-se inferiores àqueles observados antes da edição da normativa do Conselho Nacional de Justiça. 
+
+Uma situação particular envolve a Vara de Execuções Fiscais Estaduais da Capital, conforme se percebe da série temporal a ela relacionada:
+
+<img width="1342" height="572" alt="image" src="https://github.com/user-attachments/assets/edb8cc33-902d-4a99-9181-c20e8e06cf99" />
+
+<img width="1332" height="555" alt="image" src="https://github.com/user-attachments/assets/9bd5677e-de6e-4364-abac-26b393d5347d" />
+
+Essa distinção em relação às demais ocorreu porque, a partir de 07/01/2025, a Vara das Execuções Fiscais Estaduais da Fazenda Pública passou a ter competência para julgamento das execuções de todo o Estado de São Paulo, ressalvando-se apenas aquelas propostas no Núcleo Especializado de Justiça 4.0 - Execuções Fiscais e Estaduais do Interior e Litoral (Resolução n° 944/2024 do Órgão Especial do TJ/SP).
+
+Em outras palavras, as execuções fiscais estaduais, antes propostas nos diversos órgãos judiciários do Estado de acordo com sua competência territorial, passaram a ser concentradas em apenas dois órgãos: a a Vara das Execuções Fiscais Estaduais da Fazenda Pública da Capital ou o Núcleo Especializado de Justiça 4.0 - Execuções Fiscais e Estaduais do Interior e Litoral. Isso implicou em uma ampliação significativa de sua competência e, consequentemente, a variação do volume de processos se comportou de forma diferente para esse órgão.
+
+Um achado também relevante a ser descrito diz respeito à situação do Núcleo Especializado de Justiça 4.0 - Execuções Fiscais Estaduais. 
+
+O referido Núcleo foi criado em 2025 estaria destinado ao processamento de ações de maior valor ou que tivessem alguma relevância estratégica para o Estado de São Paulo. As ações com data de ajuizamento anterior a sua criação e que estão vinculadas a ele referem-se aos processos que tramitavam nas Varas de origem e foram redistribuídos ao Nucleo.
+
+Dentro desse contexto, a série temporal evidencia que, após criação e implantação do Núcleo, o número de ajuizamentos mantém-se em um patamar mais reduzido e a maior parte dos casos associados ao órgão são de processos redistribuídos e ajuizados antes de sua implantação:
+
+<img width="1370" height="562" alt="image" src="https://github.com/user-attachments/assets/2a67b628-9b71-45e9-86a5-a3cea2aa07a5" />
+
+<img width="1357" height="536" alt="image" src="https://github.com/user-attachments/assets/40072044-2c30-421a-b04e-a443bc1ddc5c" />
+
+Logo, em conclusão, embora seja possível estabelecer uma associação temporal entre a diminuição do número de ajuizamentos de execuções fiscais após a vigência da Resolução CNJ n.º 547/2024, o estabelecimento de uma causalidade direta desse volume dentro dos diversos órgãos exigiria um maior detalhamento de fatores estruturais e administrativos, em especial as alterações envolvendo organização judiciária e a própria política de ajuizamento adotada por cada ente público na sua atividade de cobrança.
 
 ---
 
