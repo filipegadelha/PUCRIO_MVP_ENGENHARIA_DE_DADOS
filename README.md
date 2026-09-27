@@ -261,6 +261,20 @@ Seu objetivo principal é preservar os dados necessários ao processamento poste
 ### Evidências - Bronze_Processos
 <img width="707" height="495" alt="image" src="https://github.com/user-attachments/assets/ed37027e-cca5-40c2-afca-ee98efffb6a0" />
 
+Oportuno também trazer a composição da tabela de Controle de Ingestão, utilizada na etapa de ingestão e preparatória para a persistência na Camada Bronze:
+
+### Catálogo – ControleIngestao
+
+| Campo | Tipo | Descrição | Domínio / Regra | Linhagem |
+|---|---|---|---|---|
+| `periodo` | STRING | Identificação do mês de ingestão | Formato `yyyy-MM` | Derivado de `data_inicio` na criação inicial da tabela |
+| `data_inicio` | DATE | Data inicial inclusiva do período consultado | Primeiro dia de cada mês entre 01/2023 e 06/2026 | Gerada previamente pelo pipeline para controle dos períodos |
+| `data_fim` | DATE | Limite final exclusivo da consulta | Primeiro dia do mês seguinte | Derivada de `data_inicio` por adição de um mês |
+| `status` | STRING | Estado da execução do período | `PENDENTE`, `PROCESSANDO`, `OK` ou `ERRO` | Criado como `PENDENTE` e atualizado durante a execução do pipeline |
+| `quantidade_registros` | BIGINT | Quantidade de registros obtidos na carga concluída | Inteiro não negativo ou `NULL` enquanto não concluída | Atualizado pelo pipeline após conclusão integral da extração |
+| `data_ingestao` | TIMESTAMP | Data e hora de conclusão da ingestão | `NULL` enquanto não concluída | Gerada com timestamp no término bem-sucedido da carga |
+| `mensagem_erro` | STRING | Informação sobre eventual erro de processamento | `NULL` em cargas sem erro | Preenchida pelo tratamento de exceções quando a ingestão não é concluída |
+
 
 ## 3.2 Camada Silver
 
@@ -277,16 +291,16 @@ As principais transformações realizadas foram:
 
 ### Catálogo – Silver_Processos
 
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `numero_processo` | STRING | Identificador do processo |
-| `tribunal` | STRING | Tribunal |
-| `data_ajuizamento` | TIMESTAMP | Data/hora de ajuizamento padronizada |
-| `ano` | INT | Ano do ajuizamento |
-| `mes` | INT | Mês do ajuizamento |
-| `ano_mes_ajuizamento` | STRING | Ano e mês no padrão `yyyy-MM` |
-| `grau` | STRING | Grau de jurisdição |
-| `orgaoJulgador_nome` | STRING | Nome do órgão julgador |
+| Campo | Tipo | Descrição | Domínio / Regra | Linhagem |
+|---|---|---|---|---|
+| `numero_processo` | STRING | Identificador do processo judicial | Único na camada Silver | Proveniente de `Bronze_Processos.numero_processo`; duplicidades são tratadas por `ROW_NUMBER()` particionado por número do processo, mantendo-se `rn = 1` |
+| `tribunal` | STRING | Tribunal de origem | Para o escopo do MVP, `TJSP` | Proveniente diretamente de `Bronze_Processos.tribunal` |
+| `data_ajuizamento` | DATE | Data do ajuizamento do processo, sem componente de horário | Datas entre janeiro/2023 e junho/2026 no recorte analisado | `Bronze_Processos.data_ajuizamento` é inicialmente convertido para timestamp por `TRY_TO_TIMESTAMP`/`TRY_CAST` e posteriormente convertido para `DATE` por `TO_DATE()` |
+| `ano` | INT | Ano do ajuizamento | 2023 a 2026 | Derivado da data tratada por `YEAR(data_ajuizamento)` |
+| `mes` | INT | Número do mês do ajuizamento | 1 a 12 | Derivado da data tratada por `MONTH(data_ajuizamento)` |
+| `ano_mes_ajuizamento` | STRING | Ano e mês do ajuizamento | Formato `yyyy-MM` | Derivado da data tratada por `DATE_FORMAT(data_ajuizamento, 'yyyy-MM')` |
+| `grau` | STRING | Grau de jurisdição | Valores existentes na fonte DATAJUD | Proveniente diretamente de `Bronze_Processos.grau` |
+| `orgaoJulgador_nome` | STRING | Nome do órgão julgador | Órgãos julgadores existentes no TJSP no conjunto analisado | Proveniente diretamente de `Bronze_Processos.orgaoJulgador_nome` |
 
 ### Evidências - Silver_Processos
 <img width="606" height="502" alt="image" src="https://github.com/user-attachments/assets/9fafbc1a-b4d1-433d-b8ac-2f8be2b75131" />
@@ -318,13 +332,13 @@ A estrutura do modelo é:
 
 Dimensão temporal com granularidade diária.
 
-| Campo | Descrição |
-|---|---|
-| `id_data` | Chave lógica da dimensão no padrão `yyyyMMdd` |
-| `data` | Data sem componente de horário |
-| `ano` | Ano |
-| `mes` | Mês |
-| `ano_mes_ajuizamento` | Ano e mês |
+| Campo | Tipo | Descrição | Domínio / Regra | Linhagem |
+|---|---|---|---|---|
+| `id_data` | INT | Chave da dimensão temporal | Formato numérico `yyyyMMdd`; valor único para cada dia | Derivado de `Silver_Processos.data_ajuizamento` por `DATE_FORMAT(..., 'yyyyMMdd')` e conversão para `INT` |
+| `ano_mes_ajuizamento` | STRING | Ano e mês do ajuizamento | Formato `yyyy-MM` | Proveniente de `Silver_Processos.ano_mes_ajuizamento` |
+| `ano` | INT | Ano do ajuizamento | 2023 a 2026 | Proveniente de `Silver_Processos.ano` |
+| `mes` | INT | Número do mês | 1 a 12 | Proveniente de `Silver_Processos.mes` |
+| `data_ajuizamento` | DATE | Data de ajuizamento com granularidade diária | Uma ocorrência por data na dimensão | Derivada de `Silver_Processos.data_ajuizamento` por `TO_DATE()`; duplicidades removidas pelo `SELECT DISTINCT` |
 
 ### Evidências - Gold_Tempo
 <img width="527" height="442" alt="image" src="https://github.com/user-attachments/assets/fd42631d-f47b-4a06-b102-95d07bdc51f3" />
@@ -334,10 +348,10 @@ Dimensão temporal com granularidade diária.
 
 Dimensão contendo os órgãos julgadores existentes no conjunto de dados.
 
-| Campo | Descrição |
-|---|---|
-| `id_orgao` | Chave substituta do órgão |
-| `nome` | Nome do órgão julgador |
+| Campo | Tipo | Descrição | Domínio / Regra | Linhagem |
+|---|---|---|---|---|
+| `id_orgao` | INT | Chave substituta da dimensão órgão julgador | Inteiro sequencial e único | Gerado por `ROW_NUMBER() OVER (ORDER BY orgaoJulgador_nome)` sobre a relação de órgãos distintos da Silver |
+| `nome` | STRING | Nome do órgão julgador | Um registro por nome distinto de órgão | Proveniente de `Silver_Processos.orgaoJulgador_nome`, após aplicação de `SELECT DISTINCT` |
 
 ### Evidências - Gold_OrgaoJulgador
 <img width="577" height="457" alt="image" src="https://github.com/user-attachments/assets/6b1fac4b-6634-4b92-a5d4-d6fc4e8c3610" />
@@ -347,18 +361,30 @@ Dimensão contendo os órgãos julgadores existentes no conjunto de dados.
 
 Tabela fato que representa o evento de ajuizamento.
 
-| Campo | Descrição |
-|---|---|
-| `numero_processo` | Número do processo |
-| `id_data` | Chave estrangeira lógica para `Gold_Tempo` |
-| `id_orgao` | Chave estrangeira lógica para `Gold_OrgaoJulgador` |
-| `grau` | Grau de jurisdição |
-| `quantidade` | Medida unitária do ajuizamento, quando utilizada |
+| Campo | Tipo | Descrição | Domínio / Regra | Linhagem |
+|---|---|---|---|---|
+| `numero_processo` | STRING | Número identificador do processo ajuizado | Único conforme a granularidade definida para a fato | Proveniente de `Silver_Processos.numero_processo` |
+| `id_data` | INT | Chave estrangeira lógica para `Gold_Tempo` | Deve possuir correspondência em `Gold_Tempo.id_data` | Obtido por `LEFT JOIN` entre `Silver_Processos.data_ajuizamento` e `Gold_Tempo.data_ajuizamento` |
+| `id_orgao` | INT | Chave estrangeira lógica para `Gold_OrgaoJulgador` | Deve possuir correspondência em `Gold_OrgaoJulgador.id_orgao` | Obtido por `LEFT JOIN` entre `Silver_Processos.orgaoJulgador_nome` e `Gold_OrgaoJulgador.nome` |
+| `grau` | STRING | Grau de jurisdição do processo | Valores oriundos do DATAJUD | Proveniente de `Silver_Processos.grau` |
 
 ### Evidências - Gold_FatoAjuizamento
 
 <img width="647" height="451" alt="image" src="https://github.com/user-attachments/assets/dd077dc3-6b0e-4ff5-b313-f190900aa285" />
 
+
+## 3.4. Linhagem dos dados
+
+A partir do catálogo exposto para cada uma das camadas, pode-se resumir a linhagem dos dados por meio do seguinte fluxo:
+
+> `API Pública DATAJUD` → `Bronze_Processos` → `Silver_Processos` → `Gold_Tempo` / `Gold_OrgaoJulgador` → `Gold_FatoAjuizamento`.
+
+
+Na camada Bronze são persistidos os atributos selecionados da resposta da API e os metadados relativos à ingestão.
+
+Na Silver são executadas as principais regras de qualidade, especialmente a deduplicação por número de processo e a padronização das datas.
+
+Finalmente, na Gold, os dados tratados são reorganizados segundo modelo dimensional, com separação entre o evento de ajuizamento e suas dimensões temporal e organizacional.
 
 ---
 
